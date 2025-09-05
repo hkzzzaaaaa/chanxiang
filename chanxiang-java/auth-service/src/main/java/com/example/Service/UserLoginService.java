@@ -1,7 +1,11 @@
 package com.example.Service;
 
+import com.example.Entity.RawPassword;
+
 public interface UserLoginService {
     String getToken(String email, String password);
 
     String getTokenByCode(String email, String code);
+
+    void updatePassword(String email, RawPassword rawPassword);
 }

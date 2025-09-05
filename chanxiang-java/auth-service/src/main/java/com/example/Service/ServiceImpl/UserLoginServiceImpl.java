@@ -1,6 +1,8 @@
 package com.example.Service.ServiceImpl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.example.Entity.RawPassword;
 import com.example.Entity.User;
 import com.example.Mapper.LoginMapper;
 import com.example.Service.UserLoginService;
@@ -13,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +85,50 @@ public class UserLoginServiceImpl implements UserLoginService {
                     int remaining = MAX_ERROR_COUNT - currentCount.intValue();
                     throw new RuntimeException("验证码错误，还剩" + remaining + "次机会，超过将锁定账号");
                 }
+            }
+        }
+    }
+    @Transactional
+    @Override
+    public void updatePassword(String email, RawPassword rawPassword) {
+        if (!rawPassword.getPassword().equals(rawPassword.getRawpassword())){
+            throw new RuntimeException("两次输入的密码不一致，修改失败");
+        }
+        String lockKey = "chanxiang:email:lock:" + email;
+        Boolean islock= MyStringRedisTemplate.hasKey(lockKey);
+        if (Boolean.TRUE.equals(islock)) {
+            throw new RuntimeException("验证码多次错误，账号已锁定" + LOCK_MINUTES + "分钟，请稍后再试");
+        }
+        String str="chanxiang:email:"+email;
+        String captcha=MyStringRedisTemplate.opsForValue().get(str);
+        if (captcha==null){
+            throw new RuntimeException("验证码已过期，请重新获取");
+        }
+        if (captcha.equals(rawPassword.getCaptcha())){
+            UpdateWrapper updateWrapper=new UpdateWrapper<>();
+            updateWrapper.eq("email",email);
+            updateWrapper.set("password",rawPassword.getPassword());
+            int rows = loginMapper.update(null,updateWrapper);
+            if (rows > 0) {
+                return;
+            }
+            else{
+                throw new RuntimeException("更新失败");
+            }
+        }
+        else{
+            String errorCountKey = "chanxiang:email:error:count:" + email;
+            Long currentCount = MyStringRedisTemplate.opsForValue().increment(errorCountKey);
+            if (currentCount != null && currentCount == 1) {
+                MyStringRedisTemplate.expire(errorCountKey, ERROR_COUNT_EXPIRE, TimeUnit.MINUTES);
+            }
+            if (currentCount != null && currentCount >= MAX_ERROR_COUNT) {
+                MyStringRedisTemplate.opsForValue().set(lockKey, "1", LOCK_MINUTES, TimeUnit.MINUTES);
+                MyStringRedisTemplate.delete(errorCountKey);
+                throw new RuntimeException("验证码连续" + MAX_ERROR_COUNT + "次错误，账号已锁定" + LOCK_MINUTES + "分钟");
+            } else {
+                int remaining = MAX_ERROR_COUNT - currentCount.intValue();
+                throw new RuntimeException("验证码错误，还剩" + remaining + "次机会，超过将锁定账号");
             }
         }
     }

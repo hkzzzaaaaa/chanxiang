@@ -2,8 +2,8 @@ package com.example.Service.ServiceImpl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.example.Entity.BaseInformation;
-import com.example.Entity.User;
+import com.example.Entity.*;
+import com.example.Feign.AuthFeign;
 import com.example.Mapper.InformationMapper;
 import com.example.Service.InformationService;
 import com.example.Util.JwtUtil;
@@ -17,6 +17,8 @@ public class InformationServiceImpl implements InformationService {
     JwtUtil jwtUtil;
     @Autowired
     InformationMapper informationMapper;
+    @Autowired
+    AuthFeign authFeign;
     @Override
     public User getInformation(String token) {
         String email= jwtUtil.getUsernameFromToken(token);
@@ -52,5 +54,40 @@ public class InformationServiceImpl implements InformationService {
                 throw new RuntimeException("更新失败");
             }
         }
+    }
+    @Transactional
+    @Override
+    public void updateStyleInformation(String token, StyleInformation styleInformation) {
+        String email= jwtUtil.getUsernameFromToken(token);
+        UpdateWrapper updateWrapper=new UpdateWrapper<>();
+        updateWrapper.eq("email",email);
+        updateWrapper.set("gender_favourite",styleInformation.getGenderFavourite());
+        updateWrapper.set("favourite",styleInformation.getFavourite());
+        updateWrapper.set("word_count",styleInformation.getWordCount());
+        int rows = informationMapper.update(null,updateWrapper);
+        if (rows > 0) {
+            return;
+        }
+        else{
+            throw new RuntimeException("更新失败");
+        }
+    }
+
+    @Override
+    public void getCaptcha(String token) {
+        String email= jwtUtil.getUsernameFromToken(token);
+        Result result=authFeign.GetCaptcha(email);
+        if (result.getCode()==0){
+            return;
+        }
+        else {
+            throw new RuntimeException(result.getMessage());
+        }
+    }
+
+    @Override
+    public void updatePassword(String token, RawPassword rawPassword) {
+        String email= jwtUtil.getUsernameFromToken(token);
+        Result result=authFeign.UpdatePassword(email,rawPassword);
     }
 }

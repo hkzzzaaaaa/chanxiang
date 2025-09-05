@@ -4,3 +4,8 @@ export interface update_base_form_type{
   gender: string;
   signial: string;
 }
+export interface update_style_form_type{
+   genderFavourite: string;
+   favourite: string;
+   wordCount: string;
+}

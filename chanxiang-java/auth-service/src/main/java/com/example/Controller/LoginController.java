@@ -2,6 +2,7 @@ package com.example.Controller;
 
 import com.example.Dto.CodeBody;
 import com.example.Dto.PasswordBody;
+import com.example.Entity.RawPassword;
 import com.example.Entity.Result;
 import com.example.Service.EmailService;
 import com.example.Service.UserLoginService;
@@ -29,5 +30,10 @@ public class LoginController {
     public Result CodeLogin(@RequestBody CodeBody codeBody){
         String token=userLoginService.getTokenByCode(codeBody.getEmail(),codeBody.getCode());
         return Result.success(token);
+    }
+    @PutMapping("/UpdatePassword")
+    public Result UpdatePassword(String email, @RequestBody RawPassword rawPassword){
+        userLoginService.updatePassword(email,rawPassword);
+        return Result.success();
     }
 }

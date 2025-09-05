@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getInformationService,Base_Information_Service} from '@/api/Information';
+import { getInformationService,Base_Information_Service,Style_Information_Service,getCaptchaService} from '@/api/Information';
 import router from '@/router';
-import type { update_base_form_type } from '@/Interface/information';
+import type { update_base_form_type,update_style_form_type} from '@/Interface/information';
 const count = ref(0) 
+const loading = ref(false);
 const basic_form=ref(
     {
         username:'',
@@ -16,8 +17,29 @@ const basic_form=ref(
         wordCount:'',
     }
 )
+const password_form=ref({
+    password:'',
+    rawpassword:'',
+    captcha:''
+})
+const password_rule={
+    password: [
+    { required: true, message: '请输入密码', trigger: ['blur', 'input'] },
+    { min: 6, message: '密码长度不能少于6位', trigger: ['blur', 'input']},
+    { max: 30, message: '密码长度不能超过30位', trigger: ['blur', 'input']}
+  ],
+    rawpassword:[
+    { required: true, message: '请再次输入密码', trigger: ['blur', 'input'] },
+    { min: 6, message: '密码长度不能少于6位', trigger: ['blur', 'input']},
+    { max: 30, message: '密码长度不能超过30位', trigger: ['blur', 'input']}
+  ],
+    captcha: [
+    { required: true, message: '请输入验证码', trigger: ['blur', 'input'] },
+    { pattern: /^\d{4}$/, message: '请输入4位数字验证码', trigger: ['blur', 'input'] },
+  ]
+}
 const isCaptchaDisabled = ref(false) 
-const getCaptcha =function(){
+const getCaptcha =async function(){
   count.value = 60
   isCaptchaDisabled.value = true 
   const timer = setInterval(() => {
@@ -27,6 +49,13 @@ const getCaptcha =function(){
       isCaptchaDisabled.value = false
     }
   }, 1000)
+  const result=await getCaptchaService();
+  if(result.data.code===0){
+    ElMessage.success("验证码发送成功,一分钟之内有效");
+  }
+  else{
+    ElMessage.error(result.data.message);
+  }
 }
 const getinformation=async function(){
     let result=await getInformationService();
@@ -64,6 +93,7 @@ const update_base_information=async function(){
         gender:basic_form.value.gender,
         signial:basic_form.value.signial
     })
+    loading.value=true;
     const result=await Base_Information_Service(update_base_form.value);
     if(result.data.code===0){
         ElMessage.success("修改成功");
@@ -72,8 +102,26 @@ const update_base_information=async function(){
         ElMessage.error(result.data.message)
         getinformation();
     }
+    loading.value=false;
 }
 const update_style_information=async function(){
+    const update_style_form=ref<update_style_form_type>({
+        genderFavourite: basic_form.value.genderFavourite,
+        favourite: basic_form.value.favourite,
+        wordCount: basic_form.value.wordCount,
+    })
+    loading.value=true;
+    const result=await Style_Information_Service(update_style_form.value);
+     if(result.data.code===0){
+        ElMessage.success("修改成功");
+    }
+    else{
+        ElMessage.error(result.data.message)
+        getinformation();
+    }
+    loading.value=false;
+}
+const update_password=async function(){
     
 }
 </script>
@@ -101,7 +149,7 @@ const update_style_information=async function(){
             </el-form-item>
             <el-form-item>
                 <div style="margin-left: 110px">
-                <el-button type="primary" style="width: 100px;" @click="update_base_information">保存</el-button>
+                <el-button type="primary" style="width: 100px;" @click="update_base_information" :disabled="loading">保存</el-button>
                 <el-button style="width: 100px;" @click="getinformation">重置</el-button>
                 </div>
             </el-form-item>
@@ -124,8 +172,8 @@ const update_style_information=async function(){
                     <el-option label="女频" value="2" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="字数偏好" v-model="basic_form.wordCount">
-                <el-select placeholder="字数偏好">
+            <el-form-item label="字数偏好">
+                <el-select placeholder="字数偏好"  v-model="basic_form.wordCount">
                     <el-option label="无" value="无" />
                     <el-option label="30万字以下" value="30万字以下" />
                     <el-option label="30~50万字" value="30~50万字" />
@@ -135,21 +183,21 @@ const update_style_information=async function(){
             </el-form-item>
              <el-form-item>
                 <div style="margin-left: 110px">
-                <el-button type="primary" style="width: 100px;">保存</el-button>
-                <el-button style="width: 100px;"  @click="getinformation">取消</el-button>
+                <el-button type="primary" style="width: 100px;" @click="update_style_information" :disabled="loading">保存</el-button>
+                <el-button style="width: 100px;"  @click="getinformation">重置</el-button>
                 </div>
             </el-form-item>
         </el-form>
         <div class="form-title">密码修改</div>
-        <el-form style="max-width: 400px;" label-width="auto">
-            <el-form-item> 
-                <el-input placeholder="请输入需要修改的密码" maxlength="30"/>
+        <el-form style="max-width: 400px;" label-width="auto" :model="password_form" :rules="password_rule">
+            <el-form-item prop="password"> 
+                <el-input placeholder="请输入需要修改的密码" maxlength="30" v-model="password_form.password"/>
             </el-form-item>
-             <el-form-item> 
-                <el-input placeholder="请再次输入需要修改的密码" maxlength="30"/>
+             <el-form-item prop="rawpassword"> 
+                <el-input placeholder="请再次输入需要修改的密码" maxlength="30" v-model="password_form.rawpassword"/>
             </el-form-item>
-            <el-form-item> 
-                <el-input placeholder="请输入邮箱验证码" maxlength="4" style="width: 250px;margin-right: 30px;"/>
+            <el-form-item prop="captcha"> 
+                <el-input placeholder="请输入邮箱验证码" maxlength="4" style="width: 250px;margin-right: 30px;" v-model="password_form.captcha"/>
                     <el-button 
                         type="default" 
                         style="width: 120px; height: 30px; border-radius: 10px;"
