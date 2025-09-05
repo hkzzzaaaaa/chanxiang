@@ -1,0 +1,15 @@
+项目已经完成前端ui的布局及部分js代码，后端完成登录注册及权限校验功能及部分功能，项目暂未完成，会同步进行更新。
+前端依赖安装：
+使用vite创建：
+vue3，vue-router，pinia，typescript。
+额外安装依赖：
+axios，element-ui，pinia-persist。
+
+后端依赖：
+java--version：11
+mysql版本：8.0  //修改数据库名称及密码
+redis版本： 5.0.14.1  //未配置密码，可以按照你的需求进行配置
+nacos:  用于服务注册和服务发现，使用后端程序需要启动nacos。
+
+gateway微服务：微服务网关，用于验证角色权限，使用其他微服务前需要保持gateway处于运行状态。
+
