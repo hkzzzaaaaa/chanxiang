@@ -14,6 +14,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,8 @@ public class UserLoginServiceImpl implements UserLoginService {
     private RedisTemplate<String,String> MyStringRedisTemplate;
     @Autowired
     private CreateUser createUser;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     private static final int MAX_ERROR_COUNT = 5;
     private static final int LOCK_MINUTES = 5;
     private static final int ERROR_COUNT_EXPIRE = 5;
@@ -60,7 +63,7 @@ public class UserLoginServiceImpl implements UserLoginService {
         if (user==null){
             user=createUser.Create(email);
             loginMapper.insert(user);
-            return jwtUtil.generateTokenByCaptcha(email,"reader");
+            return jwtUtil.generateTokenByCaptcha(email,"ROLE_reader");
         }
         else{
             String str="chanxiang:email:"+email;
@@ -69,7 +72,7 @@ public class UserLoginServiceImpl implements UserLoginService {
                 throw new RuntimeException("验证码已过期，请重新获取");
             }
             if (captcha.equals(code)){
-                return jwtUtil.generateTokenByCaptcha(email, user.getRole());
+                return jwtUtil.generateTokenByCaptcha(email,"ROLE_"+user.getRole());
             }
             else{
                 String errorCountKey = "chanxiang:email:error:count:" + email;
@@ -107,7 +110,8 @@ public class UserLoginServiceImpl implements UserLoginService {
         if (captcha.equals(rawPassword.getCaptcha())){
             UpdateWrapper updateWrapper=new UpdateWrapper<>();
             updateWrapper.eq("email",email);
-            updateWrapper.set("password",rawPassword.getPassword());
+            String password=passwordEncoder.encode(rawPassword.getPassword());
+            updateWrapper.set("password",password);
             int rows = loginMapper.update(null,updateWrapper);
             if (rows > 0) {
                 return;

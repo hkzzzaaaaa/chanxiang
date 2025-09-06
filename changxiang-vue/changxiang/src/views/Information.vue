@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { getInformationService,Base_Information_Service,Style_Information_Service,getCaptchaService} from '@/api/Information';
+import { ElMessage,ElForm} from 'element-plus';
+import { getInformationService,Base_Information_Service,Style_Information_Service,getCaptchaService,updatePasswordService} from '@/api/Information';
 import router from '@/router';
 import type { update_base_form_type,update_style_form_type} from '@/Interface/information';
 const count = ref(0) 
@@ -121,8 +121,44 @@ const update_style_information=async function(){
     }
     loading.value=false;
 }
+const formRef = ref<InstanceType<typeof ElForm>|null>(null)
 const update_password=async function(){
-    
+    const formInstance = formRef.value;
+    console.log(formInstance);
+    if (!formInstance) {
+        ElMessage.error('表单初始化失败，请刷新页面重试');
+        return;
+    }
+      const valid = await new Promise((resolve) => {
+            formInstance.validate((valid) => resolve(valid));
+        });
+        if (!valid) {
+            return;
+        }
+        if(!password_form.value.password||!password_form.value.rawpassword){
+            ElMessage.warning("请输入正确格式的密码");
+            return;
+        }
+    if(password_form.value.password!==password_form.value.rawpassword){
+        ElMessage.warning("请保证两次输入的密码正确");
+        return;
+    }
+    if(!password_form.value.captcha){
+        ElMessage.warning("请保证验证码格式正确");
+        return;
+    }
+    const result=await updatePasswordService(password_form.value);
+    if(result.data.code===0){
+        ElMessage.success("密码修改成功");
+    }
+    else{
+        ElMessage.error(result.data.message);
+    }
+}
+const repassword=function(){
+    password_form.value.password="";
+    password_form.value.rawpassword="";
+    password_form.value.captcha="";
 }
 </script>
 <template>
@@ -189,7 +225,7 @@ const update_password=async function(){
             </el-form-item>
         </el-form>
         <div class="form-title">密码修改</div>
-        <el-form style="max-width: 400px;" label-width="auto" :model="password_form" :rules="password_rule">
+        <el-form style="max-width: 400px;" label-width="auto" :model="password_form" :rules="password_rule" ref="formRef">
             <el-form-item prop="password"> 
                 <el-input placeholder="请输入需要修改的密码" maxlength="30" v-model="password_form.password"/>
             </el-form-item>
@@ -209,8 +245,8 @@ const update_password=async function(){
             </el-form-item>
              <el-form-item>
                 <div style="margin-left: 110px">
-                <el-button type="primary" style="width: 100px;">保存</el-button>
-                <el-button style="width: 100px;">取消</el-button>
+                <el-button type="primary" style="width: 100px;" @click="update_password">保存</el-button>
+                <el-button style="width: 100px;" @click="repassword">重置</el-button>
                 </div>
             </el-form-item>
         </el-form>

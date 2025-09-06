@@ -9,3 +9,8 @@ export interface update_style_form_type{
    favourite: string;
    wordCount: string;
 }
+export interface update_password_form_type{
+  password: string;
+  rawpassword: string;
+  captcha: string;
+}
